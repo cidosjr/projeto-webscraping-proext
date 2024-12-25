@@ -1,5 +1,8 @@
 # Importações
 import pandas as pd
+import re
+import openpyxl
+
 from time import sleep
 from datetime import datetime
 from selenium import webdriver
@@ -25,12 +28,10 @@ def capturar_pagina():
     
     for e in range(1, n_noticias):
         driver.find_elements(By.TAG_NAME, 'h2')[e].click()
-
         
         # Titulo
-        titulo = driver.find_element(By.TAG_NAME, 'h1').text
-        tituloLista.append(titulo)
-    
+        tituloLista.append(str(driver.title).replace(' | Pró-Reitoria de Extensão', ''))
+
         # Imagem
         img =  driver.find_elements(By.TAG_NAME, 'img')[5].get_attribute('src')
         imgLista.append(img)
@@ -48,18 +49,19 @@ def capturar_pagina():
             
         pdfLista_fora = capturar_pdfs()
 
-        pdfLista.append(pdfLista_fora)
+        pdfLista.append(str(pdfLista_fora).replace('[\'', '').replace('\']', ''))
         
-        
-        # Data
-        data = driver.find_elements(By.CLASS_NAME, 'submitted')[0].text[31:].split()[0]
-        dataLista.append(data)
-        
-        # Hora
-        hora = driver.find_elements(By.CLASS_NAME, 'submitted')[0].text[31:].split()[2]
-        horaLista.append(hora)
-    
-        
+        # Data e hora
+        str_data_hora = str(driver.find_elements(By.CLASS_NAME, 'submitted')[0].text[31:].split())
+        regex_data = r'\b\d{2}/\d{2}/\d{4}\b'
+        regex_hora = r'\b\d{2}:\d{2}\b'
+
+        data = re.findall(regex_data, str_data_hora)
+        dataLista.append(str(data).replace('[\'', '').replace('\']', ''))
+
+        hora = re.findall(regex_hora, str_data_hora)
+        horaLista.append(str(hora).replace('[\'', '').replace('\']', ''))
+
         # Noticia
         noticia = driver.find_element(By.ID, "main-content-inner").text
         noticiaLista.append(noticia)
@@ -71,8 +73,6 @@ def capturar_pagina():
         # Volta para página
         # sleep(2)
         driver.back()
-
-        
     
     # return tituloLista, imgLista,  pdfLista, dataLista, horaLista, noticiaLista
     
@@ -94,9 +94,9 @@ def capturar_todas_noticiais():
     driver.get(url)
     driver.find_element(By.CLASS_NAME, "pager-last").click()
     ultima_pagina = int(driver.find_element(By.CLASS_NAME, "pager-current").text)
+    #ultima_pagina = 50
     driver.get(url)
 
-    
     df_pagina1 = pd.DataFrame()
     dfs = []
     
@@ -128,3 +128,4 @@ data = f'{datetime.now().year}{datetime.now().month}{datetime.now().day}_{dateti
 df1.reset_index(drop=True, inplace=True)
 
 df1.to_csv(f'{data}_out.csv')
+df1.to_excel(f'{data}_out.xlsx')
